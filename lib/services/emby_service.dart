@@ -245,8 +245,16 @@ class EmbyService {
         .where((s) => s["Type"] == "Subtitle" && s["IsTextSubtitleStream"] == true)
         .toList();
 
+    final audios = streams.where((s) => s["Type"] == "Audio").toList();
+    final hasExtraAudioTracks = audios.length > 1;
+
     if (subs.isEmpty) {
-      return {"mediaSourceId": mediaSourceId, "subtitleUrl": null};
+      return {
+        "mediaSourceId": mediaSourceId,
+        "subtitleUrl": null,
+        "hasExtraAudioTracks": hasExtraAudioTracks,
+        "hasSubtitles": false,
+      };
     }
 
     Map? forced = subs.firstWhere(
@@ -265,6 +273,8 @@ class EmbyService {
     return {
       "mediaSourceId": mediaSourceId,
       "subtitleUrl": subtitleUrl,
+      "hasExtraAudioTracks": hasExtraAudioTracks,
+      "hasSubtitles": true,
     };
   }
 
