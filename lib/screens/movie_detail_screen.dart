@@ -117,6 +117,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     );
 
     final subtitleUrl = info?["subtitleUrl"];
+    final hasExtraAudioTracks = info?["hasExtraAudioTracks"] == true;
 
     if (url == null) {
       if (mounted) {
@@ -137,6 +138,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           subtitleUrl: subtitleUrl,
           title: title,
           initialPosition: startPosition,
+          hasExtraAudioTracks: hasExtraAudioTracks,
         ),
       ),
     );
