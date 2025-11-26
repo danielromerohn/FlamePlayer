@@ -338,7 +338,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     });
 
     _subtitleStatusTimer?.cancel();
-    _subtitleStatusTimer = Timer(const Duration(seconds: 2), () {
+    _subtitleStatusTimer = Timer(const Duration(seconds: 1), () {
       if (!mounted) return;
       setState(() => subtitleStatusMessage = null);
     });
@@ -435,24 +435,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               ),
 
             if (subtitleStatusMessage != null)
-              Positioned(
-                bottom: 90,
-                left: 0,
-                right: 0,
+              Positioned.fill(
                 child: Center(
                   child: Text(
                     subtitleStatusMessage!,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black,
-                          blurRadius: 6,
-                          offset: Offset(1, 1),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -538,6 +528,31 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         _controller.play();
                       }
                       setState(() {});
+                    },
+                  ),
+
+                  IconButton(
+                    iconSize: 32,
+                    icon: const Icon(Icons.replay_10, color: Colors.white),
+                    onPressed: () async {
+                      final current = _controller.value.position;
+                      final target = current - const Duration(seconds: 10);
+                      await _controller.seekTo(
+                        target.isNegative ? Duration.zero : target,
+                      );
+                    },
+                  ),
+
+                  IconButton(
+                    iconSize: 32,
+                    icon: const Icon(Icons.forward_10, color: Colors.white),
+                    onPressed: () async {
+                      final current = _controller.value.position;
+                      final duration = _controller.value.duration;
+                      final target = current + const Duration(seconds: 10);
+                      await _controller.seekTo(
+                        target > duration ? duration : target,
+                      );
                     },
                   ),
 
