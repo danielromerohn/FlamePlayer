@@ -585,14 +585,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
                   // SUBTÍTULOS ON/OFF
                   TextButton(
-                    onPressed: subtitlesAvailable ? _toggleSubtitles : null,
+                    onPressed:
+                        _hasAnyTrackOptions ? _openAudioSubtitlesPanel : null,
+                    style: TextButton.styleFrom(
+                      foregroundColor:
+                          _hasAnyTrackOptions ? Colors.white : Colors.white54,
+                    ),
                     child: Text(
-                      subtitlesEnabled
-                          ? "Subtítulos activados"
-                          : "Subtítulos desactivados",
+                      "Audio & Subtítulos",
                       style: TextStyle(
                         color:
-                            subtitlesAvailable ? Colors.white : Colors.white54,
+                            _hasAnyTrackOptions ? Colors.white : Colors.white54,
                         fontSize: 16,
                       ),
                     ),
@@ -660,4 +663,131 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
+  // PANEL AUDIO & SUBTÍTULOS
+  Future<void> _openAudioSubtitlesPanel() async {
+    if (!_hasAnyTrackOptions) return;
+
+    bool tempSubsEnabled = subtitlesEnabled;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black87,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: StatefulBuilder(
+              builder: (context, modalSetState) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Audio",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (widget.hasExtraAudioTracks)
+                      const Text(
+                        "Selección de pista de audio no disponible.",
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      )
+                    else
+                      const Text(
+                        "No hay pistas de audio adicionales.",
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      "Subtítulos",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (subtitlesAvailable) ...[
+                      GestureDetector(
+                        onTap: () {
+                          modalSetState(() => tempSubsEnabled = true);
+                        },
+                        child: Text(
+                          "Activados",
+                          style: TextStyle(
+                            color:
+                                tempSubsEnabled ? Colors.white : Colors.grey,
+                            fontWeight: tempSubsEnabled
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      GestureDetector(
+                        onTap: () {
+                          modalSetState(() => tempSubsEnabled = false);
+                        },
+                        child: Text(
+                          "Desactivados",
+                          style: TextStyle(
+                            color: !tempSubsEnabled
+                                ? Colors.white
+                                : Colors.grey,
+                            fontWeight: !tempSubsEnabled
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ] else
+                      const Text(
+                        "No hay subtítulos disponibles.",
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE50914),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () {
+                          if (subtitlesAvailable) {
+                            setState(
+                                () => subtitlesEnabled = tempSubsEnabled);
+                          }
+                          Navigator.of(ctx).pop();
+                        },
+                        child: const Text("Aplicar"),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  bool get _hasAnyTrackOptions => subtitlesAvailable || widget.hasExtraAudioTracks;
 }
