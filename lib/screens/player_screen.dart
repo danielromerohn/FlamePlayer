@@ -37,6 +37,7 @@ class VideoPlayerScreen extends StatefulWidget {
   final String? subtitleUrl;
   final String title;
   final Duration? initialPosition;
+  final bool hasExtraAudioTracks;
 
   const VideoPlayerScreen({
     super.key,
@@ -44,6 +45,7 @@ class VideoPlayerScreen extends StatefulWidget {
     required this.title,
     this.subtitleUrl,
     this.initialPosition,
+    this.hasExtraAudioTracks = false,
   });
 
   @override
@@ -61,8 +63,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Timer? _hideTimer;
   double currentVolume = 1.0;
   bool subtitlesEnabled = true;
+  bool subtitlesAvailable = false;
   bool initialized = false;
   bool _isBuffering = false;
+
+  String? subtitleStatusMessage;
+  Timer? _subtitleStatusTimer;
 
   String? fillMessage; // 🔥 NUEVO: mensaje "Rellenar Pantalla" / "Original"
 
@@ -86,6 +92,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       });
     }
 
+    subtitlesAvailable = widget.subtitleUrl != null;
     _initAll();
   }
 
@@ -139,6 +146,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Future<void> _loadSubtitles() async {
     if (!subtitlesEnabled || widget.subtitleUrl == null) {
       subtitlesEnabled = false;
+      subtitlesAvailable = false;
       return;
     }
 
@@ -147,11 +155,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
         final decoded = decodeSrt(res.bodyBytes);
         cues = _parseSrt(decoded);
+        subtitlesAvailable = cues.isNotEmpty;
       } else {
         subtitlesEnabled = false;
+        subtitlesAvailable = false;
       }
     } catch (_) {
       subtitlesEnabled = false;
+      subtitlesAvailable = false;
     }
 
     setState(() {});
@@ -260,6 +271,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _controller.dispose();
     _hideTimer?.cancel();
     _positionSub?.cancel();
+    _subtitleStatusTimer?.cancel();
     super.dispose();
   }
 
@@ -312,6 +324,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     Future.delayed(const Duration(seconds: 2), () {
       if (!mounted) return;
       setState(() => fillMessage = null);
+    });
+  }
+
+  void _toggleSubtitles() {
+    if (!subtitlesAvailable) return;
+
+    setState(() {
+      subtitlesEnabled = !subtitlesEnabled;
+      subtitleStatusMessage = subtitlesEnabled
+          ? "Subtitulos activados"
+          : "Subtitulos desactivados";
+    });
+
+    _subtitleStatusTimer?.cancel();
+    _subtitleStatusTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      setState(() => subtitleStatusMessage = null);
     });
   }
 
@@ -400,6 +429,30 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+            if (subtitleStatusMessage != null)
+              Positioned(
+                bottom: 90,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    subtitleStatusMessage!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black,
+                          blurRadius: 6,
+                          offset: Offset(1, 1),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -515,12 +568,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     },
                   ),
 
-                  // AUDIO & SUBTÍTULOS
+                  // SUBTÍTULOS ON/OFF
                   TextButton(
-                    onPressed: _openAudioSubtitlesPanel,
-                    child: const Text(
-                      "Audio & Subtítulos",
-                      style: TextStyle(color: Colors.white, fontSize: 16,),
+                    onPressed: subtitlesAvailable ? _toggleSubtitles : null,
+                    child: Text(
+                      subtitlesEnabled
+                          ? "Subtítulos activados"
+                          : "Subtítulos desactivados",
+                      style: TextStyle(
+                        color:
+                            subtitlesAvailable ? Colors.white : Colors.white54,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
 
@@ -586,105 +645,4 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
-  // PANEL AUDIO & SUBTÍTULOS
-  Future<void> _openAudioSubtitlesPanel() async {
-    bool tempSubsEnabled = subtitlesEnabled;
-
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.black87,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Audio",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  "Selección de pista de audio no disponible.",
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  "Subtítulos",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                GestureDetector(
-                  onTap: () {
-                    setState(() => tempSubsEnabled = true);
-                  },
-                  child: Text(
-                    "Activados",
-                    style: TextStyle(
-                      color: tempSubsEnabled ? Colors.white : Colors.grey,
-                      fontWeight: tempSubsEnabled
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                GestureDetector(
-                  onTap: () {
-                    setState(() => tempSubsEnabled = false);
-                  },
-                  child: Text(
-                    "Desactivados",
-                    style: TextStyle(
-                      color: !tempSubsEnabled ? Colors.white : Colors.grey,
-                      fontWeight: !tempSubsEnabled
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE50914),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () {
-                      setState(() => subtitlesEnabled = tempSubsEnabled);
-                      Navigator.of(ctx).pop();
-                    },
-                    child: const Text("Aplicar"),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
