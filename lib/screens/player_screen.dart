@@ -67,6 +67,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool initialized = false;
   bool _isBuffering = false;
 
+  String? subtitleStatusMessage;
+  Timer? _subtitleStatusTimer;
+
   String? fillMessage; // 🔥 NUEVO: mensaje "Rellenar Pantalla" / "Original"
 
   List<SubtitleCue> cues = [];
@@ -268,6 +271,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _controller.dispose();
     _hideTimer?.cancel();
     _positionSub?.cancel();
+    _subtitleStatusTimer?.cancel();
     super.dispose();
   }
 
@@ -320,6 +324,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     Future.delayed(const Duration(seconds: 2), () {
       if (!mounted) return;
       setState(() => fillMessage = null);
+    });
+  }
+
+  void _toggleSubtitles() {
+    if (!subtitlesAvailable) return;
+
+    setState(() {
+      subtitlesEnabled = !subtitlesEnabled;
+      subtitleStatusMessage = subtitlesEnabled
+          ? "Subtitulos activados"
+          : "Subtitulos desactivados";
+    });
+
+    _subtitleStatusTimer?.cancel();
+    _subtitleStatusTimer = Timer(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      setState(() => subtitleStatusMessage = null);
     });
   }
 
@@ -412,6 +433,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   ),
                 ),
               ),
+
+            if (subtitleStatusMessage != null)
+              Positioned.fill(
+                child: Center(
+                  child: Text(
+                    subtitleStatusMessage!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -496,6 +531,31 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     },
                   ),
 
+                  IconButton(
+                    iconSize: 32,
+                    icon: const Icon(Icons.replay_10, color: Colors.white),
+                    onPressed: () async {
+                      final current = _controller.value.position;
+                      final target = current - const Duration(seconds: 10);
+                      await _controller.seekTo(
+                        target.isNegative ? Duration.zero : target,
+                      );
+                    },
+                  ),
+
+                  IconButton(
+                    iconSize: 32,
+                    icon: const Icon(Icons.forward_10, color: Colors.white),
+                    onPressed: () async {
+                      final current = _controller.value.position;
+                      final duration = _controller.value.duration;
+                      final target = current + const Duration(seconds: 10);
+                      await _controller.seekTo(
+                        target > duration ? duration : target,
+                      );
+                    },
+                  ),
+
                   const SizedBox(width: 10),
 
                   Text(
@@ -523,7 +583,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     },
                   ),
 
-                  // AUDIO & SUBTÍTULOS
+                  // SUBTÍTULOS ON/OFF
                   TextButton(
                     onPressed:
                         _hasAnyTrackOptions ? _openAudioSubtitlesPanel : null,
